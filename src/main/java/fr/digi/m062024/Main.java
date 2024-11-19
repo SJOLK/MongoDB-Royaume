@@ -1,70 +1,124 @@
 package fr.digi.m062024;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import org.bson.Document;
+import java.util.Scanner;
+
+
 public class Main {
     public static void main(String[] args) {
-        // Créer une instance de connexion
-        ConnexionMongoDB connexionMongoDB = new ConnexionMongoDB();
+        try (MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017")) {
+            MongoDatabase database = mongoClient.getDatabase("Royaume");
+            System.out.println("Connexion réussie à la base de données : " + database.getName());
 
-        // Récupérer la base de données
-        GestionRessources gestionRessources = new GestionRessources(connexionMongoDB.getDatabase());
-        GestionCitoyen gestionCitoyen = new GestionCitoyen(connexionMongoDB.getDatabase());
+            // Initialisation des collections et gestionnaires
 
-        // Ajouter une ressource appelée "Or" avec une quantité de 500
-        gestionRessources.ajouterRessource("Or", 500);
+            MongoCollection<Document> ressourcesCollection = database.getCollection("Ressources");
+            GestionRessources gestionRessources = new GestionRessources(ressourcesCollection);
 
-        // Afficher toutes les ressources
-        System.out.println("Ressources après ajout :");
-        gestionRessources.afficherRessources();
+            MongoCollection<Document> citoyensCollection = database.getCollection("Citoyens");
+            GestionCitoyens gestionCitoyens = new GestionCitoyens(citoyensCollection);
 
-        // Mettre à jour la quantité de "Or" à 700
-        gestionRessources.mettreAJourRessource("Or", 700);
+            MongoCollection<Document> missionsCollection = database.getCollection("Missions");
+            GestionMissions gestionMissions = new GestionMissions(gestionRessources, gestionCitoyens, missionsCollection);
 
-        // Afficher toutes les ressources après mise à jour
-        System.out.println("Ressources après mise à jour :");
-        gestionRessources.afficherRessources();
+            // Scanner pour les entrées utilisateur
+            Scanner scanner = new Scanner(System.in);
+            boolean running = true;
 
-        // Supprimer la ressource "Or"
-        gestionRessources.supprimerRessource("Or");
+            // Boucle du menu principal
+            while (running) {
+                System.out.println("\n=== Menu Principal ===");
+                System.out.println("1. Ajouter des ressources");
+                System.out.println("2. Afficher les ressources");
+                System.out.println("3. Ajouter des citoyens");
+                System.out.println("4. Afficher les citoyens");
+                System.out.println("5. Préparer une mission");
+                System.out.println("6. Envoyer une mission");
+                System.out.println("7. Calculer les gains de mission");
+                System.out.println("8. Quitter");
+                System.out.print("Choisissez une option : ");
+                int choix = scanner.nextInt();
 
-        // Afficher toutes les ressources après suppression
-        System.out.println("Ressources après suppression :");
-        gestionRessources.afficherRessources();
+                switch (choix) {
+                    case 1:
+                        System.out.print("Type de ressource : ");
+                        String typeRessource = scanner.next();
+                        System.out.print("Quantité : ");
+                        int quantiteRessource = scanner.nextInt();
+                        gestionRessources.ajouterRessource(typeRessource, quantiteRessource);
+                        break;
 
+                    case 2:
+                        gestionRessources.afficherRessources();
+                        break;
 
-        // 1. Ajouter des citoyens
-        gestionCitoyen.ajouterCitoyen("Citoyen1", 100, "production de nourriture");
-        gestionCitoyen.ajouterCitoyen("Citoyen2", 50, "protection");
+                    case 3:
+                        System.out.print("Nom du citoyen : ");
+                        String nomCitoyen = scanner.next();
+                        System.out.print("Quantité : ");
+                        int quantiteCitoyen = scanner.nextInt();
+                        System.out.print("Rôle : ");
+                        String roleCitoyen = scanner.next();
+                        gestionCitoyens.ajouterCitoyen(nomCitoyen, quantiteCitoyen, roleCitoyen);
+                        break;
 
-        // 2. Afficher tous les citoyens
-        System.out.println("Citoyens après ajout :");
-        gestionCitoyen.afficherCitoyens();
+                    case 4:
+                        gestionCitoyens.afficherCitoyens();
+                        break;
 
-        // 3. Mettre à jour un citoyen
-        gestionCitoyen.mettreAJourCitoyen("Citoyen1", 150, "construction");
+                    case 5:
+                        System.out.print("Nom de la mission : ");
+                        String nomMission = scanner.next();
+                        System.out.print("Nombre de soldats nécessaires : ");
+                        int soldatsNecessaires = scanner.nextInt();
+                        System.out.print("Bois nécessaire : ");
+                        int boisNecessaire = scanner.nextInt();
+                        System.out.print("Nourriture nécessaire : ");
+                        int nourritureNecessaire = scanner.nextInt();
+                        boolean missionPrete = gestionMissions.preparerMission(nomMission, soldatsNecessaires, boisNecessaire, nourritureNecessaire);
+                        if (missionPrete) {
+                            System.out.println("Mission prête à être envoyée.");
+                        } else {
+                            System.out.println("Préparation de la mission échouée.");
+                        }
+                        break;
 
-        // 4. Afficher les citoyens après mise à jour
-        System.out.println("Citoyens après mise à jour :");
-        gestionCitoyen.afficherCitoyens();
+                    case 6:
+                        System.out.print("Nom de la mission à envoyer : ");
+                        String missionEnvoyee = scanner.next();
+                        System.out.print("Nombre de soldats envoyés : ");
+                        int soldatsEnvoyes = scanner.nextInt();
+                        gestionMissions.envoyerEnMission(missionEnvoyee, soldatsEnvoyes);
+                        break;
 
-        // 5. Supprimer un citoyen
-        gestionCitoyen.supprimerCitoyen("Citoyen1");
-        gestionCitoyen.supprimerCitoyen("Citoyen2");
+                    case 7:
+                        System.out.print("Nom de la mission pour calculer les gains : ");
+                        String missionPourGain = scanner.next();
+                        System.out.print("Mission réussie ? (true/false) : ");
+                        boolean missionReussie = scanner.nextBoolean();
+                        System.out.print("Nombre de soldats envoyés : ");
+                        int soldatsPourGain = scanner.nextInt();
+                        gestionMissions.calculerGain(missionPourGain, missionReussie, soldatsPourGain);
+                        break;
 
-        // 6. Afficher les citoyens après suppression
-        System.out.println("Citoyens après suppression :");
-        gestionCitoyen.afficherCitoyens();
+                    case 8:
+                        running = false;
+                        System.out.println("Au revoir !");
+                        break;
 
-        // Vérifier le nombre total de citoyens par rôle
-        int totalPaysans = gestionCitoyen.verifierCitoyenParRole("production de nourriture");
-        System.out.println("Nombre total de citoyens pour le rôle 'production de nourriture' : " + totalPaysans);
+                    default:
+                        System.out.println("Option invalide. Veuillez réessayer.");
+                }
+            }
 
-        int totalSoldats = gestionCitoyen.verifierCitoyenParRole("protection");
-        System.out.println("Nombre total de citoyens pour le rôle 'protection' : " + totalSoldats);
+            scanner.close();
 
-        int totalArtisants = gestionCitoyen.verifierCitoyenParRole("construction");
-        System.out.println("Nombre total de citoyens pour le rôle 'construction' : " + totalArtisants);
-
-        // Fermer la connexion
-        connexionMongoDB.fermerConnexion();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
